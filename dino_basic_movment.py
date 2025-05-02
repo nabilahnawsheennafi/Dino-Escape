@@ -4,8 +4,6 @@ from OpenGL.GLUT import *
 import math
 import random
 
-# Rocks
-rock_positions = [] 
 # Dino position
 dino_x, dino_y, dino_z = 0, 0, 0
 move_step = 2
@@ -27,18 +25,25 @@ asteroids = [
 asteroid_speed = 0.03
 last_speed_update_gem_count = 0
 
+rock_positions = [] 
 
-# Dino damage/death
+# Dinodeath
 dino_hit_count = 0
 dino_alive = True
 dino_shake_offset = 0
 shake_direction = 1
 dino_color = [0.0, 0.8, 0.2]
 
-# Gem system
+# Gem 
 gems_collected = 0
 gem_positions = [(random.randint(-100, 100), -80)]
 gem_spawn_z = -80
+
+#enimes
+enemies = [{'x': x, 'z': z, 'direction': 1} for x, z in [(-120, -60), (-60, -100), (60, -80), (120, -120)]]
+enemy_speed = 0.05
+enemy_range = 40
+pits = [(x, z) for x, z in [(-90, -70), (-30, -110), (30, -90), (90, -100)]]
 
 def generate_rocks():
     rocks = []
@@ -47,6 +52,7 @@ def generate_rocks():
         z = random.randint(-180, 180)
         rocks.append((x, z))
     return rocks
+
 def draw_rocks():
     glColor3f(0.4, 0.4, 0.4)
     for x, z in rock_positions:
@@ -54,7 +60,8 @@ def draw_rocks():
         glTranslatef(x, 2, z)
         glScalef(6, 4, 6)
         glutSolidCube(1)
-        glPopMatrix()   
+        glPopMatrix() 
+
 def draw_text(x, y, text, font=GLUT_BITMAP_HELVETICA_18):
     glMatrixMode(GL_PROJECTION)
     glPushMatrix()
@@ -126,7 +133,7 @@ def draw_ground():
 
 
 def draw_rocks():
-    glColor3f(0.4, 0.4, 0.4)  # Gray color for the rocks
+    glColor3f(0.4, 0.4, 0.4) 
     
     for x, z in rock_positions:
         glPushMatrix()
@@ -161,16 +168,16 @@ def draw_rocks():
 
 def draw_trees_and_bushes():
     tree_positions = [(-150, -70), (-100, -80), (-50, -90), (0, -100), (50, -85), (100, -75), (200, -95), (-190, -60), (-30, -70), (30, -65), (80, -90), (130, -80)]
-    # bush_positions = [(-130, -60), (-30, -70), (30, -65), (80, -90), (130, -80)]
+    
 
     quadric = gluNewQuadric()
 
-    # Draw trees
+    #trees
     for x, z in tree_positions:
         glPushMatrix()
         glTranslatef(x, 40, z)
         
-        # Tree trunk (
+        # Treetrunk
         glColor3f(0.4, 0.26, 0.13) 
         glPushMatrix()
         glTranslatef(0, 5, 0)
@@ -178,14 +185,11 @@ def draw_trees_and_bushes():
         gluCylinder(quadric, 2, 2, 10, 10, 10)
         glPopMatrix()
 
-        # Tree foliage
+        
         glColor3f(0.0, 0.5, 0.0)  
         glTranslatef(0, 15, 0)
         glutSolidSphere(6, 16, 16)
         glPopMatrix()
-
-
-
 
 def draw_gems():
     glColor3f(0.2, 0.9, 1.0)
@@ -211,6 +215,7 @@ def draw_asteroid(x, y, z):
     glColor3f(0.5, 0.5, 0.5)
     glutSolidSphere(6, 18, 18)
     quadric = gluNewQuadric()
+
     for i in range(5):
         glPushMatrix()
         glTranslatef(random.uniform(-4, 4), random.uniform(-4, 4), random.uniform(-4, 4))
@@ -219,6 +224,7 @@ def draw_asteroid(x, y, z):
         glColor3f(0.3 + random.uniform(0, 0.2), 0.3, 0.3)
         glutSolidCube(4)
         glPopMatrix()
+
     for i in range(4):
         glPushMatrix()
         glTranslatef(random.uniform(-3, 3), random.uniform(-3, 3), random.uniform(-3, 3))
@@ -229,7 +235,46 @@ def draw_asteroid(x, y, z):
         glPopMatrix()
     glPopMatrix()
 
+def draw_enemies():
+    glColor3f(1.0, 0.0, 0.0)
+    for enemy in enemies:
+        glPushMatrix()
+        glTranslatef(enemy['x'], 3, enemy['z'])
+        glScalef(6, 6, 6)
+        glutSolidCube(1)
+        glPopMatrix()
 
+def update_enemies():
+    for enemy in enemies:
+        enemy['x'] += enemy_speed * enemy['direction']
+        if abs(enemy['x']) > 150:
+            enemy['direction'] *= -1
+
+def check_enemy_collision():
+    global dino_hit_count, dino_alive
+    for enemy in enemies:
+        dist = math.sqrt((dino_x - enemy['x'])**2 + (dino_z - enemy['z'])**2)
+        if dist < 10:
+            dino_hit_count += 1
+            if dino_hit_count >= 5:
+                dino_alive = False
+            return
+
+def draw_pits():
+    glColor3f(0.2, 0.2, 0.2)
+    for x, z in pits:
+        glPushMatrix()
+        glTranslatef(x, -1.5, z)
+        glScalef(10, 0.2, 10)
+        glutSolidCube(1)
+        glPopMatrix()
+
+def check_pit_collision():
+    global speed_multiplier
+    for x, z in pits:
+        dist = math.sqrt((dino_x - x)**2 + (dino_z - z)**2)
+        if dist < 10 and not is_jumping:
+            speed_multiplier = max(1.0, speed_multiplier - 0.1)
 
 def check_gem_collision():
     global gem_positions, gems_collected, move_step, speed_multiplier, asteroid_speed, last_speed_update_gem_count
@@ -247,13 +292,12 @@ def check_gem_collision():
     gem_positions[:] = new_positions
 
     if gems_collected // 2 > last_speed_update_gem_count // 2:
-        asteroid_speed += 0.01  
+        print("Speed increased!")
+        asteroid_speed += 1 
         last_speed_update_gem_count = gems_collected
 
 def idle():
-    global dino_y, jump_velocity, is_jumping
-    global dino_hit_count, gems_collected, dino_alive
-    global dino_shake_offset, shake_direction, dino_color
+    global dino_y, jump_velocity, is_jumping, dino_hit_count, gems_collected, dino_alive, dino_shake_offset, shake_direction, dino_color
 
     if is_jumping:
         dino_y += jump_velocity
@@ -291,13 +335,8 @@ def idle():
     glutPostRedisplay()
 
 def restart_game():
-    global dino_x, dino_y, dino_z, move_step, speed_multiplier
-    global dino_facing_left, is_jumping, jump_velocity, dino_hit_count
-    global dino_alive, dino_shake_offset, shake_direction, dino_color
-    global gems_collected, gem_positions, asteroids
-    global asteroid_speed, last_speed_update_gem_count, rock_positions
-    asteroid_speed = 0.03
-    last_speed_update_gem_count = 0
+    global dino_x, dino_y, dino_z, move_step, speed_multiplier, dino_facing_left, is_jumping, jump_velocity, dino_hit_count
+    global dino_alive, dino_shake_offset, shake_direction, dino_color, gems_collected, gem_positions, asteroids, asteroid_speed, last_speed_update_gem_count, rock_positions
 
 
     dino_x, dino_y, dino_z = 0, 0, 0
@@ -333,6 +372,12 @@ def showScreen():
     draw_trees_and_bushes()  
     draw_gems()
     draw_rocks()
+    
+    draw_pits()
+    draw_enemies()
+    update_enemies()
+    check_enemy_collision()
+    check_pit_collision()
     
     if not rock_positions:
         rock_positions = generate_rocks()
@@ -371,6 +416,7 @@ def keyboardListener(key, x, y):
         is_jumping = True
         jump_velocity = jump_start_velocity
         glutIdleFunc(idle)
+        
     dino_x = max(min_x, min(max_x, dino_x))
     dino_z = max(min_z, min(max_z, dino_z))
     check_gem_collision()
