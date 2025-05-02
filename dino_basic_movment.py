@@ -416,7 +416,7 @@ def keyboardListener(key, x, y):
         is_jumping = True
         jump_velocity = jump_start_velocity
         glutIdleFunc(idle)
-        
+
     dino_x = max(min_x, min(max_x, dino_x))
     dino_z = max(min_z, min(max_z, dino_z))
     check_gem_collision()
@@ -435,7 +435,7 @@ def main():
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutInitWindowSize(1000, 800)
     glutInitWindowPosition(0, 0)
-    glutCreateWindow(b"Dino Escape - Two Asteroids")
+    glutCreateWindow(b"Dino Escape")
     init()
     glutDisplayFunc(showScreen)
     glutKeyboardFunc(keyboardListener)
