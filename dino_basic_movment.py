@@ -8,15 +8,29 @@ import random
 dino_x, dino_y, dino_z = 0, 0, 0
 move_step = 2
 speed_multiplier = 1.0
-dino_facing_left = False #
+dino_facing_left = False 
 
 
-# Jumping variables
+# Jumping 
 is_jumping = False
 jump_velocity = 0
 gravity = -0.25
 jump_start_velocity = 6.5
 max_fall_speed = -0.1
+
+# Asteroid 
+asteroid_y = 200
+asteroid_x = random.randint(-100, 100)
+asteroid_z = 0
+asteroid_active = True
+
+# Dino die
+dino_hit_count = 0
+dino_alive = True
+dino_shake_offset = 0
+shake_direction = 1
+dino_color = [0.0, 0.8, 0.2]  
+
 
 # Gem system
 gems_collected = 0
@@ -47,12 +61,13 @@ def draw_text(x, y, text, font=GLUT_BITMAP_HELVETICA_18):
 
 def draw_dino(x, y, z):
     glPushMatrix()
-    glTranslatef(x, y+5, z)
+    shake = dino_shake_offset if not dino_alive else 0
+    glTranslatef(x + shake, y + 5, z)
 
     if dino_facing_left:
         glRotatef(180, 0, 1, 0)  
 
-    glColor3f(0.0, 0.8, 0.2)  
+    glColor3f(*dino_color)
 
     block = 3  
 
@@ -131,6 +146,40 @@ def draw_gems():
 
         glPopMatrix()
 
+def draw_asteroid():
+    if not asteroid_active or not dino_alive:
+        return
+
+    glPushMatrix()
+    glTranslatef(asteroid_x, asteroid_y, asteroid_z)
+
+    
+    glColor3f(0.4, 0.4, 0.4)
+    glutSolidSphere(6, 16, 16)
+
+    
+    cuboid_positions = [(4, 2, 0), (-5, -3, 1), (0, 4, -3)]
+    for pos in cuboid_positions:
+        glPushMatrix()
+        glTranslatef(*pos)
+        glScalef(2.0, 0.5, 1.0)
+        glutSolidCube(4)
+        glPopMatrix()
+
+    
+    quadric = gluNewQuadric()
+    cylinder_positions = [(3, -2, 2), (-4, 3, -1)]
+    for pos in cylinder_positions:
+        glPushMatrix()
+        glTranslatef(*pos)
+        glRotatef(90, 1, 0, 0)
+        gluCylinder(quadric, 1.5, 1.0, 5, 12, 3)
+        glPopMatrix()
+
+    glPopMatrix()
+
+
+
 
 def check_gem_collision():
     global gem_positions, gems_collected, move_step, speed_multiplier
@@ -143,7 +192,7 @@ def check_gem_collision():
             speed_multiplier += 0.25
             move_step = int(3 * speed_multiplier)
 
-            # Spawn new gem at random x, same z
+            
             new_x = random.randint(-100, 100)
             new_positions.append((new_x, gem_spawn_z))
         else:
@@ -153,6 +202,9 @@ def check_gem_collision():
 
 def idle():
     global dino_y, jump_velocity, is_jumping
+    global asteroid_y, asteroid_x, asteroid_z, asteroid_active
+    global dino_hit_count, gems_collected, dino_alive
+    global dino_shake_offset, shake_direction, dino_color
 
     if is_jumping:
         dino_y += jump_velocity
@@ -165,9 +217,73 @@ def idle():
             dino_y = 0
             jump_velocity = 0
             is_jumping = False
-            glutIdleFunc(None)  
 
-        glutPostRedisplay()
+  
+    if dino_alive:
+        asteroid_y -= 0.05
+
+        if asteroid_y <= 0:
+            
+            asteroid_x = random.randint(-100, 100)
+            asteroid_y = 200
+            asteroid_z = dino_z
+
+       
+        if abs(asteroid_x - dino_x) < 10 and abs(asteroid_y - (dino_y + 5)) < 10 and abs(asteroid_z - dino_z) < 10:
+            if gems_collected == 0:
+                dino_alive = False  
+            else:
+                dino_hit_count += 1
+                gems_collected = max(0, gems_collected - 0.25)
+                if dino_hit_count >= 3:
+                    dino_alive = False
+                else:
+                    asteroid_x = random.randint(-100, 100)
+                    asteroid_y = 200
+                    asteroid_z = dino_z
+ 
+    else:
+        
+        dino_shake_offset += shake_direction * 1
+        if abs(dino_shake_offset) > 5:
+            shake_direction *= -1
+        dino_color = [random.random() for _ in range(3)]
+
+    glutPostRedisplay()
+
+def restart_game():
+    global dino_x, dino_y, dino_z, move_step, speed_multiplier
+    global dino_facing_left, is_jumping, jump_velocity, dino_hit_count
+    global asteroid_x, asteroid_y, asteroid_z, asteroid_active
+    global dino_alive, dino_shake_offset, shake_direction, dino_color
+    global gems_collected, gem_positions
+
+    # Reset dino
+    dino_x, dino_y, dino_z = 0, 0, 0
+    move_step = 2
+    speed_multiplier = 1.0
+    dino_facing_left = False
+    is_jumping = False
+    jump_velocity = 0
+    dino_hit_count = 0
+    dino_alive = True
+    dino_shake_offset = 0
+    shake_direction = 1
+    dino_color = [0.0, 0.8, 0.2]
+
+    # Reset asteroid
+    asteroid_x = random.randint(-100, 100)
+    asteroid_y = 200
+    asteroid_z = 0
+    asteroid_active = True
+
+    # Reset gems
+    gems_collected = 0
+    gem_positions = [(random.randint(-100, 100), -80)]
+
+    glutIdleFunc(idle)
+    glutPostRedisplay()
+
 
 def showScreen():
     global gems_collected
@@ -180,17 +296,33 @@ def showScreen():
 
     draw_ground()
     draw_gems()
+    draw_asteroid()
+
     draw_dino(dino_x, dino_y, dino_z)
 
     draw_text(10, 760, f"Game Score: {gems_collected}")
+
+    if gems_collected > 0 and dino_alive:
+        hits_left = max(0, 3 - dino_hit_count)
+        draw_text(10, 730, f"Hits Left: {hits_left}") 
+    if not dino_alive:
+        draw_text(10, 730, "DINO DIED!", GLUT_BITMAP_HELVETICA_18)
+
 
     glutSwapBuffers()
 
 def keyboardListener(key, x, y):
     global dino_x, dino_z, is_jumping, jump_velocity, dino_facing_left
 
+    if key == b'r':
+        restart_game()
+        return 
+    if not dino_alive:
+        return  
+
     min_x, max_x = -165, 170
     min_z, max_z = -165, 170
+
 
     if key == b'a':
         dino_x -= move_step
@@ -202,6 +334,7 @@ def keyboardListener(key, x, y):
         dino_z -= move_step
     elif key == b's':
         dino_z += move_step
+
     elif key == b' ' and not is_jumping:
         is_jumping = True
         jump_velocity = jump_start_velocity
