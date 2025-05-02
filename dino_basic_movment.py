@@ -21,9 +21,10 @@ max_fall_speed = -0.1
 
 # asteroids
 asteroids = [
-    {'x': random.randint(-200, 200), 'y': 200, 'z': 0, 'active': True},
-    {'x': random.randint(-200, 200), 'y': 200, 'z': 0, 'active': True}
+    {'x': random.randint(-100, 100), 'y': 200, 'z': 0, 'active': True, 'speed': random.uniform(0.02, 0.05)},
+    {'x': random.randint(-100, 100), 'y': 200, 'z': 0, 'active': True, 'speed': random.uniform(0.02, 0.05)}
 ]
+
 asteroid_speed = 0.03
 last_speed_update_gem_count = 0
 
@@ -118,7 +119,7 @@ def draw_dino(x, y, z):
 
 def draw_ground():
     glPushMatrix()
-    glColor3f(0.4, 0.29, 0.0)  
+    glColor3f(0.6, 0.29, 0.0)  
     glTranslatef(0, -1.5, 0)   
     glScalef(1000, 1, 1000)    
     glutSolidCube(1)          
@@ -130,16 +131,12 @@ def draw_rocks():
     
     for x, z in rock_positions:
         glPushMatrix()
-        
-        
-        glTranslatef(x, 2, z)
-        
+        glTranslatef(x, 2, z) 
         
         glPushMatrix()
         glScalef(6, 2, 6)  
         glutSolidCube(1)
         glPopMatrix()
-        
         
         glPushMatrix()
         glTranslatef(0, 3, 0)  
@@ -147,7 +144,6 @@ def draw_rocks():
         glutSolidSphere(1, 20, 20)
         glPopMatrix()
         
-       
         glPushMatrix()
         glTranslatef(3, 1, 0)  
         glRotatef(90, 1, 0, 0)  
@@ -156,7 +152,6 @@ def draw_rocks():
         glPopMatrix()
         
         glPopMatrix()
-
 
 
 def draw_trees_and_bushes():
@@ -170,16 +165,16 @@ def draw_trees_and_bushes():
         glPushMatrix()
         glTranslatef(x, 40, z)
         
-        # Tree trunk (
-        glColor3f(0.4, 0.26, 0.13) 
+        # Tree trunk (cylinder)
+        glColor3f(0.4, 0.26, 0.13)  # Brown trunk
         glPushMatrix()
         glTranslatef(0, 5, 0)
         glRotatef(-90, 1, 0, 0)
         gluCylinder(quadric, 2, 2, 10, 10, 10)
         glPopMatrix()
 
-        # Tree foliage
-        glColor3f(0.0, 0.5, 0.0)  
+        # Tree foliage (sphere)
+        glColor3f(0.0, 0.5, 0.0)  # Dark green
         glTranslatef(0, 15, 0)
         glutSolidSphere(6, 16, 16)
         glPopMatrix()
@@ -267,7 +262,7 @@ def idle():
 
     if dino_alive:
         for asteroid in asteroids:
-            asteroid['y'] -= asteroid_speed
+            asteroid['y'] -= asteroid['speed']
             if asteroid['y'] <= 0:
                 asteroid['x'] = random.randint(-100, 100)
                 asteroid['y'] = 200
@@ -313,10 +308,13 @@ def restart_game():
     dino_color = [0.0, 0.8, 0.2]
     gems_collected = 0
     gem_positions = [(random.randint(-100, 100), -80)]
-    asteroids = [
-        {'x': random.randint(-100, 100), 'y': 200, 'z': 0, 'active': True},
-        {'x': random.randint(-100, 100), 'y': 200, 'z': 0, 'active': True}
-    ]
+
+    for asteroid in asteroids:
+        if asteroid['active']:
+            if 'speed' not in asteroid:
+                asteroid['speed'] = random.uniform(0.025, 0.035)
+            asteroid['y'] -= asteroid['speed']
+
     
     rock_positions = generate_rocks()
 
